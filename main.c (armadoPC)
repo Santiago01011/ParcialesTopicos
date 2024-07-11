@@ -1,0 +1,369 @@
+/***************************************************************************************
+******************************* Complete sus datos *************************************
+****************************************************************************************
+* Apellido, Nombres:
+*
+* DNI:
+*
+****************************************************************************************/
+
+#include <locale.h>
+#include <windows.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../Vector/Vector.h"
+
+
+#define ARG_PATH_COMP 1
+#define ARG_PATH_ARM_REP 2
+
+typedef void (*print_callback)(const void*);
+void printComponente(const void* Co);
+void printArmadoYRep(const void* AyR);
+void printIdxComponente(const void* Ico);
+
+typedef int (*convertBin)(const char*, void*);
+int convertBinAyR(const char* linea, void* elem);
+
+int mostrarArchivo_ALU(const char* nombreArch, size_t tamElem, print_callback print);
+
+
+int txtABin(const char* nombreArch, size_t tamElem, convertBin convert);
+void cambiarExtension(const char* nombreOrig, char* nombreBin, const char* ext);
+
+int actualizarComponentes_ALU(const char* pathComponentes, const char* pathArmadoYRep);
+int cmpAyR_ALU(const void* a, const void* b);
+int cmpInd_ALU(const void* a, const void* b);
+void actualizarAyR_ALU(void* destino, const void* origen);
+
+
+int vectorInsertarAlFinal_ALU(Vector* vector, void* elem);
+int vectorCrear_ALU(Vector* vec, size_t tamElem);
+int vectorDestruir_ALU(Vector* vec);
+int vectorVaciar_ALU(Vector* vec);
+int vectorCargarDeArchivo_ALU(const char* nombreArch, Vector* vector, size_t tamElem);
+int vectorCargarAyR_ALU(const char* nombreArch, Vector* vec, size_t tamElem);
+bool buscarEnVectorOrdBin_ALU(const Vector* v, void* elem, Cmp cmp, int* pos);
+int vectorInsertarOrdenado_ALU(Vector* vec, void* elem, Cmp cmp);
+
+
+
+int main(int argc, char* argv[])
+{
+    setlocale(LC_ALL, "spanish");	// Cambiar locale - Suficiente para m�quinas Linux
+    SetConsoleCP(1252); 			// Cambiar STDIN -  Para m�quinas Windows
+    SetConsoleOutputCP(1252);		// Cambiar STDOUT - Para m�quinas Windows
+
+    puts("Componentes antes de actualizar:\n");
+    mostrarArchivo_ALU(argv[ARG_PATH_COMP], sizeof(t_Componente), printComponente);
+    puts("");
+
+
+    //mostrarArchivo_ALU(argv[ARG_PATH_ARM_REP], sizeof(ArmadoYRep), printArmadoYRep);
+    puts("");
+
+    ///*********************************************************************************************************
+    //int resp = actualizarComponentes(argv[ARG_PATH_COMP], argv[ARG_PATH_ARM_REP]);
+    ///******** Descomente la l�nea de abajo y comente la de arriba para probar su c�digo **********************
+    int resp = actualizarComponentes_ALU(argv[ARG_PATH_COMP], argv[ARG_PATH_ARM_REP]);
+    ///*********************************************************************************************************
+    if(resp != TODO_OK)
+    {
+        puts("\nError actualizando los componentes.");
+        return resp;
+    }
+
+    puts("\nComponentes despues de actualizar:\n");
+    mostrarArchivo_ALU(argv[ARG_PATH_COMP], sizeof(t_Componente), printComponente);
+
+//	getchar();
+
+    return 0;
+}
+
+/*
+    para ver el indice:
+    IndComponente* ptrInd = (char*)idxComp.vec;
+    IndComponente auxInd = *ptrInd;
+    printIdxComponente(&auxInd);
+
+*/
+
+
+
+int actualizarComponentes_ALU(const char* pathComponentes, const char* pathArmadoYRep)
+{
+    int resp, pos;
+    puts("Armados/Reparaciones:");
+    txtABin(pathArmadoYRep, sizeof(ArmadoYRep), convertBinAyR);
+    Vector idxComp;
+    Vector vecAyR;
+    resp=vectorCrear_ALU(&idxComp, sizeof(IndComponente)); if(resp != TODO_OK) return resp;
+    resp=vectorCrear_ALU(&vecAyR, sizeof(ArmadoYRep)); if(resp != TODO_OK) return resp;
+    char nombreIdx[40];
+    nombreIdx[0]='\0';
+    cambiarExtension(pathComponentes, nombreIdx, ".idx");
+    resp=vectorCargarDeArchivo_ALU(nombreIdx, &idxComp, idxComp.tamElem); if(resp != TODO_OK) return resp;
+    resp=mostrarArchivo_ALU(nombreIdx, idxComp.tamElem, printIdxComponente); if(resp != TODO_OK) return resp;
+    resp=vectorCargarAyR_ALU("ArmadosYReparaciones.dat", &vecAyR, vecAyR.tamElem); if(resp != TODO_OK) return resp;
+    FILE* archComponentes = fopen(pathComponentes, "r+b"); if(!archComponentes){
+        printf("Error al abrir el archivo %s", pathComponentes);
+        return -11;
+    }
+    t_Componente auxComponente;
+    for(int i=0; i<vecAyR.ce; i++){
+        ArmadoYRep* ptrAyR = (ArmadoYRep*)(vecAyR.vec)+ i;
+        printArmadoYRep(ptrAyR);
+        buscarEnVectorOrdBin_ALU(&idxComp, ptrAyR->codigo, cmpInd_ALU, &pos);
+        IndComponente* ptrInd = (IndComponente*)(idxComp.vec) + pos;
+        printIdxComponente(ptrInd);
+        fseek(archComponentes, ptrInd->nroReg * sizeof(t_Componente), SEEK_SET);
+        fread(&auxComponente, sizeof(auxComponente), 1, archComponentes);
+        auxComponente.stock -= ptrAyR->cantidad;
+        if(auxComponente.stock < 0){
+            printf("Sin stock de %s", ptrAyR->codigo);
+            resp=vectorDestruir_ALU(&idxComp); if(resp != TODO_OK) return resp;
+            resp=vectorDestruir_ALU(&vecAyR); if(resp != TODO_OK) return resp;
+            fclose(archComponentes);
+            return -5;
+        }
+        auxComponente.precioUnitario = ptrAyR->precioUnitario;
+        fseek(archComponentes, ptrInd->nroReg * sizeof(t_Componente), SEEK_SET);
+        fwrite(&auxComponente, sizeof(auxComponente), 1, archComponentes);
+    }
+
+
+    resp=vectorDestruir_ALU(&vecAyR); if(resp != TODO_OK) return resp;
+    resp=vectorDestruir_ALU(&idxComp); if(resp != TODO_OK) return resp;
+    return TODO_OK;
+}
+
+
+int mostrarArchivo_ALU(const char* nombreArch, size_t tamElem, print_callback print){
+    FILE* arch = fopen(nombreArch, "rb");
+    if(!arch){
+        printf("Error al abrir el archivo %s", nombreArch);
+        return -11;
+    }
+    void* elem = malloc(tamElem);
+    if(!elem){
+        fclose(arch);
+        printf("Error al asignar memoria");
+        return -21;
+
+    }
+    printf("\n-------Archivo: %s-------\n", nombreArch);
+    while(fread(elem, tamElem, 1, arch)){
+        print(elem);
+    }
+    printf("-------Fin de archivo-------\n");
+    fclose(arch);
+    free(elem);
+    return TODO_OK;
+}
+
+void cambiarExtension(const char* nombreOrig, char* nombreBin, const char* ext){
+    int i=0;
+    while(nombreOrig[i]!='.' && nombreOrig[i]!='\0'){
+        nombreBin[i]=nombreOrig[i];
+        i++;
+    }
+    nombreBin[i]='\0';
+    strcat(nombreBin, ext);
+}
+
+int txtABin(const char* nombreArch, size_t tamElem, convertBin convert){
+    FILE* archTxt = fopen(nombreArch, "r");
+    if(!archTxt){
+        printf("Error al abrir el archivo %s", nombreArch);
+        return -11;
+    }
+    char nombreBin[100];
+    nombreBin[0]='\0';
+    cambiarExtension(nombreArch, nombreBin, ".dat");
+    FILE* archBin = fopen(nombreBin, "wb");
+    if(!archBin){
+        printf("Error al abrir el archivo %s", nombreBin);
+        fclose(archTxt);
+        return -12;
+    }
+    void* elem = malloc(tamElem);
+    if(!elem){
+        fclose(archTxt);
+        fclose(archBin);
+        printf("ErrorMem");
+        return -21;
+    }
+    char linea[400];
+    while(fgets(linea, 400, archTxt)){
+        if(convert(linea, elem) == TODO_OK){
+            fwrite(elem, tamElem, 1, archBin);
+        }
+    }
+    free(elem);
+    fclose(archBin);
+    fclose(archTxt);
+    mostrarArchivo_ALU(nombreBin, sizeof(ArmadoYRep), printArmadoYRep);
+    //remove(nombreBin);
+    return TODO_OK;
+}
+
+void printComponente(const void* Co){
+    t_Componente* componente = (t_Componente*)Co;
+    printf("Cod: %s\tPrecio: %.2f\tStock: %d\n", componente->codigo, componente->precioUnitario, componente->stock);
+}
+void printArmadoYRep(const void* AyR){
+    ArmadoYRep* armRep = (ArmadoYRep*) AyR;
+    printf("Num: %d\tCod: %s\tCant: %d\tPrecio: %.2f\n", armRep->nroOp, armRep->codigo, armRep->cantidad, armRep->precioUnitario);
+}
+void printIdxComponente(const void* Ico){
+    IndComponente* idx = (IndComponente*)Ico;
+    printf("Cod: %s\tnro Reg: %d\n",idx->codigo, idx->nroReg);
+}
+
+int convertBinAyR(const char* linea, void* elem){
+    ArmadoYRep* AyR = (ArmadoYRep*)elem;
+    if(sscanf(linea, "%d|%20[^|]|%d|%lf", &AyR->nroOp, AyR->codigo, &AyR->cantidad, &AyR->precioUnitario)==4)
+        return TODO_OK;
+    return -1;
+}
+
+int vectorCrear_ALU(Vector* vec, size_t tamElem){
+    vec->vec = malloc(tamElem * 20);
+    if(!vec->vec){
+        return SIN_MEM;
+    }
+    vec->ce = 0;
+    vec->cap = 20;
+    vec->tamElem = tamElem;
+    return TODO_OK;
+}
+
+int vectorCargarDeArchivo_ALU(const char* nombreArch, Vector* vector, size_t tamElem){
+    FILE* arch = fopen(nombreArch, "rb");
+    if(!arch){
+        printf("Error al abrir el archivo %s", nombreArch);
+        return -11;
+    }
+    void* elem = malloc(vector->tamElem);
+    if(!elem){
+        printf("Error al asignar memoria");
+        fclose(arch);
+        return SIN_MEM;
+    }
+    while(fread(elem, tamElem, 1, arch)){
+        if(vectorInsertarAlFinal_ALU(vector, elem) != 0){
+            fclose(arch);
+            free(elem);
+            return -12;
+        }
+    }
+    fclose(arch);
+    free(elem);
+    return TODO_OK;
+}
+
+int vectorDestruir_ALU(Vector* vec){
+    if(vec->vec){
+       free(vec->vec);
+       vec->vec = NULL;
+       vec->ce = 0;
+       vec->cap = 0;
+       vec->tamElem = 0;
+       return TODO_OK;
+    }
+    return -1;
+}
+
+int vectorVaciar_ALU(Vector* vec){
+    if(vec->vec){
+        vec->ce = 0;
+        return TODO_OK;
+    }
+    return -1;
+}
+
+int cmpAyR_ALU(const void* a, const void* b) {
+    ArmadoYRep* A = (ArmadoYRep*)a;
+    ArmadoYRep* B = (ArmadoYRep*)b;
+    return strcmp(A->codigo, B->codigo);
+}
+
+int cmpInd_ALU(const void* a, const void* b) {
+    IndComponente* A = (IndComponente*)a;
+    IndComponente* B = (IndComponente*)b;
+    return strcmp(A->codigo, B->codigo);
+}
+
+void actualizarAyR_ALU(void* destino, const void* origen) {
+    ArmadoYRep* dest = (ArmadoYRep*)destino;
+    ArmadoYRep* orig = (ArmadoYRep*)origen;
+    dest->cantidad += orig->cantidad;
+    dest->precioUnitario = orig->precioUnitario;
+}
+
+int vectorCargarAyR_ALU(const char* nombreArch, Vector* vec, size_t tamElem){
+    FILE* arch = fopen(nombreArch, "rb");
+    if(!arch){
+        printf("Error al abrir el archivo %s", nombreArch);
+        return -11;
+    }
+    ArmadoYRep auxAyR;
+    while(fread(&auxAyR, tamElem, 1, arch)){
+        if(vectorInsertarOrdenado_ALU(vec, &auxAyR, cmpAyR_ALU) != 0){
+            fclose(arch);
+            return -12;
+        }
+    }
+    fclose(arch);
+    return TODO_OK;
+}
+
+int vectorInsertarOrdenado_ALU(Vector* vec, void* elem, Cmp cmp){
+    int pos;
+    if(buscarEnVectorOrdBin_ALU(vec, elem, cmp, &pos)){
+        // Element already exists, update it
+        actualizarAyR_ALU((char*)vec->vec + pos * vec->tamElem, elem);
+    }else{
+        // Element does not exist, insert it
+        if(vectorInsertarAlFinal_ALU(vec, elem) != 0){
+            return -12;
+        }
+        qsort(vec->vec, vec->ce, vec->tamElem, cmp);
+    }
+    return TODO_OK;
+}
+
+int vectorInsertarAlFinal_ALU(Vector* vector, void* elem){
+    // Verificar si el vector est� lleno
+    if (vector->ce == vector->cap) {
+        vector->cap *= 2;
+        vector->vec = realloc(vector->vec, vector->cap * vector->tamElem);
+        if (!vector->vec) {
+            return SIN_MEM;
+        }
+    }
+    memcpy((char*)vector->vec + vector->ce * vector->tamElem, elem, vector->tamElem);
+    vector->ce++;
+    return TODO_OK;
+}
+
+bool buscarEnVectorOrdBin_ALU(const Vector* v, void* elem, Cmp cmp, int* pos){
+    int inicio=0;
+    int fin = v->ce -1;
+    while (inicio <= fin){
+        int medio = inicio + (fin - inicio) /2;
+        void* elemMedio = (char*)v->vec + medio * v->tamElem;
+        int resultado = cmp(elemMedio, elem);
+        if(resultado == 0){
+            *pos = medio;
+            return true;
+        }else if(resultado < 0){
+            inicio = medio + 1;
+        }else
+            fin = medio - 1;
+    }
+    *pos = -1;
+    return false;
+}
