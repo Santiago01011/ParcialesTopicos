@@ -1,0 +1,344 @@
+/***************************************************************************************
+******************************* Complete sus datos *************************************
+****************************************************************************************
+* Apellido, Nombres:
+*
+* DNI:
+*
+***************************************************************************************/
+
+/************************************ Corrección ***************************************
+****************************************************************************************
+*
+****************************************************************************************
+* Nota:
+***************************************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../SolucionParcialEcommerceTopicos/SolucionParcialEcommerce.h"
+#include "../Vector/Vector.h"
+
+
+#define ARG_CLIENTES    1
+#define ARG_PRODUCTOS   2
+#define ARG_REGLAS      3
+#define ARG_OFERTAS     4
+#define CAP_INICIAL     50
+
+typedef void (*print_callback)(const void*);
+int txtABin_ALU(const char* nombreArchTxt);
+void cambiarExtension_ALU(const char* nombreArchivoOrig, char* nombreArchivoConExtension, const char* extension);
+int mostrarArchivo_ALU(const char* nombreArchivo, unsigned tam, print_callback print);
+void imprimirVector_ALU(void* elem, void* datosAccion);
+int vectorCrear_ALU(Vector* vec, size_t tamElem);
+void vectorDestruir_ALU(Vector* vec);
+int vectorCargarDeArchivo_ALU(const char* nombreArch, Vector* vector, size_t tamElem);
+bool buscarEnVectorOrd_ALU(const Vector* v, void* elem, Cmp cmp, int* pos);
+int vectorInsertarAlFinal_ALU(Vector* vector, void* elem);
+void printOferta(const void* of);
+void* vectorObtenerElem(const Vector* vec, int indice);
+void vectorRecorrer_ALU(Vector* vector, Accion acc, void* datos);
+void printRegla(const void* re);
+
+
+int main(int argc, char* argv[])
+{
+
+    //generarArchivoClientes(argv[ARG_CLIENTES], false);
+    //generarArchivoProductos(argv[ARG_PRODUCTOS], false);
+    //generarArchivoReglas(argv[ARG_REGLAS]);
+
+//    generarArchivoOfertas(argv[ARG_CLIENTES], argv[ARG_PRODUCTOS], argv[ARG_REGLAS], argv[ARG_OFERTAS]);
+    generarArchivoOfertas_ALU(argv[ARG_CLIENTES], argv[ARG_PRODUCTOS], argv[ARG_REGLAS], argv[ARG_OFERTAS]);
+
+    if(mostrarArchivo_ALU(argv[ARG_OFERTAS], sizeof(Oferta), printOferta))
+        printf("\n\nError al mostrar el archivo de ofertas.\n");
+
+    char nombreArchivoOfertasTxt[251];
+    cambiarExtension_ALU(argv[ARG_OFERTAS], nombreArchivoOfertasTxt, ".txt");
+
+    //generarArchivoOfertasTxt(argv[ARG_OFERTAS], nombreArchivoOfertasTxt);
+    generarArchivoOfertasTxt_ALU(argv[ARG_OFERTAS], nombreArchivoOfertasTxt);
+
+    //if(mostrarArchivo_ALU(nombreArchivoOfertasTxt, sizeof(Oferta), printOferta))
+       // printf("\n\nError al mostrar el archivo de ofertas txt.\n");
+
+    return 0;
+
+}
+
+int generarArchivoOfertas_ALU(const char* nombreArchClientes, const char* nombreArchProductos, const char* nombreArchReglas, const char* nombreArchOfertas)
+{
+    txtABin_ALU(nombreArchReglas);
+    mostrarArchivo_ALU("Reglas.dat", sizeof(Regla), printRegla);
+    Vector reglas;
+    vectorCrear_ALU(&reglas, sizeof(Regla));
+    vectorCargarDeArchivo_ALU("Reglas.dat", &reglas, sizeof(Regla));
+    //vectorRecorrer_ALU(&reglas, imprimirVector_ALU, NULL); //como se imprime un vector con esturctura Vector
+    FILE* archClientes = fopen(nombreArchClientes, "rb");
+    if(!archClientes){
+        vectorDestruir_ALU(&reglas);
+        return ERR_ARCHIVO;
+    }
+    FILE* archProductos = fopen(nombreArchProductos, "rb");
+    if(!archProductos){
+        fclose(archClientes);
+        vectorDestruir_ALU(&reglas);
+        return ERR_ARCHIVO;
+    }
+    FILE* archOfertas = fopen(nombreArchOfertas, "wb");
+    if(!archOfertas){
+        fclose(archClientes);
+        fclose(archProductos);
+        vectorDestruir_ALU(&reglas);
+        return ERR_ARCHIVO;
+    }
+    Cliente auxCliente;
+    fseek(archClientes, 0, SEEK_END);
+    int cantClientes = ftell(archClientes)/sizeof(Cliente);
+    fseek(archClientes, 0, SEEK_SET);
+    Producto auxProducto;
+    fseek(archProductos, 0, SEEK_END);
+    int cantProductos = ftell(archProductos)/sizeof(Producto);
+    fseek(archProductos, 0, SEEK_SET);
+    Oferta auxOferta;
+
+    for(int i = 0; i < cantClientes; i++){
+        fread(&auxCliente, sizeof(Cliente), 1, archClientes);
+        printf("Usuario: %s, nivel: %d\n", auxCliente.usuario, auxCliente.nivel);
+        Regla* ptrRegla = reglas.vec + (auxCliente.nivel - 1) * sizeof(Regla);
+        Regla auxRegla = *ptrRegla;
+        printRegla(&auxRegla);
+        fseek(archProductos, 0, SEEK_SET);
+        for(int j = 0; j < cantProductos; j++){
+            fread(&auxProducto, sizeof(Producto), 1, archProductos);
+            strcpy(auxOferta.usuario, auxCliente.usuario);
+            if(auxProducto.precio * (auxRegla.porcDescuento/100) < auxRegla.topeDescuento)
+                auxOferta.precio = auxProducto.precio * (1 - auxRegla.porcDescuento/100);
+            else
+                auxOferta.precio = auxProducto.precio - auxRegla.topeDescuento;
+            strcpy(auxOferta.producto, auxProducto.codigo);
+            if(auxOferta.precio >= auxRegla.minimoParaEnvioGratis){
+                auxOferta.envioGratis = true;
+            }
+            else{
+                auxOferta.envioGratis = false;
+            }
+            fwrite(&auxOferta, sizeof(Oferta), 1, archOfertas);
+            printf("Producto: %s, Precio: %.2f\n",auxOferta.producto, auxOferta.precio);
+        }
+    }
+    fclose(archClientes);
+    fclose(archProductos);
+    fclose(archOfertas);
+    vectorDestruir_ALU(&reglas);
+    return TODO_OK;
+}
+
+
+int generarArchivoOfertasTxt_ALU(const char* nombreArchivoOfertas, const char* nombreArchivoOfertasTxt){
+
+    FILE* archBin = fopen(nombreArchivoOfertas, "rb");
+    if(!archBin){
+        printf("Error al abrir el archivo %s", nombreArchivoOfertas);
+        return ERR_ARCHIVO;
+    }
+    FILE* archTxt = fopen(nombreArchivoOfertasTxt, "w");
+    if(!archTxt){
+        fclose(archBin);
+        printf("Error al abrir el archivo %s", nombreArchivoOfertasTxt);
+    }
+    fprintf(archTxt, "Usuario\n\tProducto\t\tPrecio\t\tEnvio gratis\n");
+    Oferta auxOferta;
+    char usuario[21];
+    char envio[10];
+
+
+    fread(&auxOferta, sizeof(Oferta), 1, archBin);
+    strcpy(usuario, auxOferta.usuario);
+    fprintf(archTxt, "%s\n", usuario);
+    while(strcmp(usuario, auxOferta.usuario)==0 && !feof(archBin)){
+        if(auxOferta.envioGratis)
+            strcpy(envio, "SI");
+        else
+            strcpy(envio, "NO");
+        fprintf(archTxt, "\t%s\t\t$%.2f\t\t%-s\n", auxOferta.producto, auxOferta.precio, envio);
+        fread(&auxOferta, sizeof(Oferta), 1, archBin);
+        if(strcmp(usuario, auxOferta.usuario)!=0){
+            strcpy(usuario, auxOferta.usuario);
+            fprintf(archTxt, "%s\n", usuario);
+        }
+    }
+    fclose(archBin);
+    fclose(archTxt);
+    return TODO_OK;
+}
+
+void cambiarExtension_ALU(const char* nombreArchivoOrig, char* nombreArchivoConExtension, const char* extension){
+    int i = 0;
+    while(nombreArchivoOrig[i] != '.' && nombreArchivoOrig[i] != '\0'){
+        nombreArchivoConExtension[i] = nombreArchivoOrig[i];
+        i++;
+    }
+    nombreArchivoConExtension[i] = '\0';
+    strcat(nombreArchivoConExtension, extension);
+}
+
+int txtABin_ALU(const char* nombreArchTxt){
+    FILE* archTxt = fopen(nombreArchTxt, "rt");
+    if(!archTxt){
+        return ERR_ARCHIVO;
+        printf("Error al abrir el archivo: %s",nombreArchTxt);
+    }
+    char nombreBin[251];
+    cambiarExtension_ALU(nombreArchTxt,nombreBin,".bin");
+    FILE* archBin = fopen(nombreBin, "wb");
+    if(!archBin){
+        fclose(archTxt);
+        printf("Error al abrir el archivo: %s", nombreBin);
+        return ERR_ARCHIVO;
+    }
+    Regla aux;
+    char cad[1000];
+    fgets(cad, 1000, archTxt);
+    while(fgets(cad, 1000, archTxt)){
+        if(sscanf(cad, "%d %f %f %f", &aux.nivel, &aux.porcDescuento, &aux.topeDescuento,&aux.minimoParaEnvioGratis)==4)
+            fwrite(&aux, sizeof(Regla), 1, archBin);
+    }
+    fclose(archTxt);
+    fclose(archBin);
+    return TODO_OK;
+}
+
+int mostrarArchivo_ALU(const char* nombreArchivo, unsigned tam, print_callback print){
+    FILE * pf = fopen(nombreArchivo, "rb");
+    if (!pf)
+        return -11;
+    void * buffer = malloc(tam);
+    if(!buffer){
+        fclose(pf);
+        return -12;
+    }
+    printf("-------Archivo: %s-------\n", nombreArchivo);
+    while(fread(buffer, tam, 1, pf) == 1){
+        print(buffer);
+    }
+    printf("-------Fin de archivo-------\n");
+    fclose(pf);
+    free(buffer);
+    return TODO_OK;
+}
+
+void imprimirVector_ALU(void* elemento, void* datos) {
+    Regla* regla = (Regla*)elemento;
+    printf("Nivel: %d\n", regla->nivel);
+    printf("Porcentaje de descuento: %.2f\n", regla->porcDescuento);
+    printf("Tope de descuento: %.2f\n", regla->topeDescuento);
+    printf("Minimo para envio gratis: %.2f\n", regla->minimoParaEnvioGratis);
+}
+
+int vectorCrear_ALU(Vector* vec, size_t tamElem){
+    vec->vec = malloc(CAP_INICIAL * tamElem);
+    if (!vec->vec) {
+        return SIN_MEM;
+    }
+    vec->ce = 0;
+    vec->cap = CAP_INICIAL;
+    vec->tamElem = tamElem;
+    return TODO_OK;
+}
+
+void vectorDestruir_ALU(Vector* vec){
+    if (vec->vec) {
+        free(vec->vec);
+        vec->vec = NULL;
+    }
+    vec->ce = 0;
+    vec->cap = 0;
+    vec->tamElem = 0;
+}
+
+int vectorCargarDeArchivo_ALU(const char* nombreArch, Vector* vector, size_t tamElem) {
+    FILE* archivo = fopen(nombreArch, "rb");
+    if (!archivo) {
+        return ERR_ARCHIVO;
+    }
+    void* elem = malloc(tamElem);
+    if(!elem){
+        fclose(archivo);
+        return SIN_MEM;
+    }
+    while (fread(&elem, tamElem, 1, archivo) == 1) {
+        if (vectorInsertarAlFinal_ALU(vector, &elem) != 0){
+            fclose(archivo);
+            return ERR_ARCHIVO;
+        }
+    }
+    fclose(archivo);
+    return TODO_OK;
+}
+
+bool buscarEnVectorOrd_ALU(const Vector* v, void* elem, Cmp cmp, int* pos) {
+    int inicio = 0;
+    int fin = v->ce - 1;
+    while (inicio <= fin) {
+        int medio = inicio + (fin - inicio) / 2;
+        // Calcula la dirección del elemento medio
+        void* elemMedio = (char*)v->vec + (medio * v->tamElem);
+        int resultado = cmp(elemMedio, elem);
+        if (resultado == 0) {
+            *pos = medio;
+            return true;
+        } else if (resultado < 0) {
+            inicio = medio + 1;
+        } else {
+            fin = medio - 1;
+        }
+    }
+    *pos = -1;
+    return false;
+}
+
+int vectorInsertarAlFinal_ALU(Vector* vector, void* elem) {
+    // Verificar si el vector está lleno
+    if (vector->ce == vector->cap) {
+        vector->cap *= 2;
+        vector->vec = realloc(vector->vec, vector->cap * vector->tamElem);
+        if (!vector->vec) {
+            return SIN_MEM;
+        }
+    }
+    memcpy((char*)vector->vec + vector->ce * vector->tamElem, elem, vector->tamElem);
+    vector->ce++;
+
+    return TODO_OK;
+}
+
+void printOferta(const void* of){
+    Oferta* oferta= (Oferta*)of;
+    printf("Usuario: %s, Producto: %s, Precio %.2f ", oferta->usuario, oferta->producto, oferta->precio);
+    if(oferta->envioGratis)
+        printf("Envio gratis: SI\n");
+    else
+        printf("Envio gratis: NO\n");
+}
+
+void* vectorObtenerElem(const Vector* vec, int indice) {
+    if (indice < 0 || indice >= vec->ce) {
+        return NULL; // Índice fuera de rango
+    }
+    return vec->vec + indice * vec->tamElem;
+}
+
+void vectorRecorrer_ALU(Vector* vector, Accion func, void* datos) {
+    for (int i = 0; i < vector->ce; i++) {
+        func(vector->vec + i * vector->tamElem, NULL);
+    }
+}
+
+void printRegla(const void* re){
+    Regla* regla= (Regla*)re;
+    printf("Nivel: %d, Descuento: %.2f, Tope desc: %.2f, minimo envio gratis %.2f\n", regla->nivel, regla->porcDescuento, regla->topeDescuento, regla->minimoParaEnvioGratis);
+}
