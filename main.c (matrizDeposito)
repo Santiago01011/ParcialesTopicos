@@ -1,0 +1,248 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "../Matriz/Matriz.h"
+#include "../Vector/Vector.h"
+#include "../SolucionMatrizDepositos/SolucionMatrizDepositos.h"
+
+#define ARG_STOCKS 1
+#define ARG_MOVIMIENTOS 2
+#define TODO_OK 0
+
+
+int actualizarDepositos_ALU(const char* nombreStocks, const char* nombreMovimientos);
+void inicializarMatrizEnCero_ALU(int** matMovDeps, int filas, int columnas);
+int TxtaBin_ALU(const char* nombreMovimientos, const char* nombreMovimientosBin);
+int cargarMatrizMovimientosDepositos_ALU(const char* nombreMovimientos, int** matMovDeps, int cantDepositos, Vector* codigosDepositos);
+int obtenerCantDepositos_ALU(const char* nombreStocks);
+int crearVectorCodigosDepositos_ALU(const char* nombreStocks, int cantDepositos, Vector* codigosDepositos);
+int cmpInt_ALU(const void* a, const void* b);
+void imprimirCodigo(void* elem, void* datosAccion);
+int cmpStrings_ALU(const void* a, const void* b);
+void actualizarString_ALU(void* destino, const void* origen);
+int codigoASubindice_ALU(const Vector* codigosDepositos, char* codigo);
+int procesarMatrizMovimientosDepositosActualizandoStocks_ALU(int** matMovDeps, int cantDepositos, const Vector* codigosDepositos, const char* nombreStocks);
+
+
+
+bool buscarEnVectorOrd_ALU(const Vector* v, void* elem, int (*cmp)(const void*, const void*), int* pos) {
+    int inicio = 0;
+    int fin = v->ce - 1;
+    while (inicio <= fin) {
+        int medio = inicio + (fin - inicio) / 2;
+        // Calcula la dirección del elemento medio
+        void* elemMedio = (char*)v->vec + (medio * v->tamElem);
+        int resultado = cmp(elemMedio, elem);
+        if (resultado == 0) {
+            *pos = medio; // Almacenar la posición del elemento encontrado
+            return true;
+        } else if (resultado < 0) {
+            inicio = medio + 1;
+        } else {
+            fin = medio - 1;
+        }
+    }
+    *pos = -1; // Indicar que el elemento no fue encontrado
+    return false;
+}
+
+
+int main(int argc, char* argv[])
+{
+    Vector* aux;
+    crearVector(aux, 10, sizeof(Stock));
+	generarStocks(argv[ARG_STOCKS]);
+	generarMovimientos(argv[ARG_MOVIMIENTOS]);
+
+	puts("Stocks antes de actualizar:");
+	mostrarStocks(argv[ARG_STOCKS]);
+
+/*********************************************************************************************************************/
+actualizarDepositos_ALU(argv[ARG_STOCKS], argv[ARG_MOVIMIENTOS]);
+/************* Descomente la funci�n de arriba y comente la de abajo para ejecutar su c�digo. ************************/
+	// actualizarDepositos(argv[ARG_STOCKS], argv[ARG_MOVIMIENTOS]);
+/*********************************************************************************************************************/
+
+	puts("\nStocks despues de actualizar:");
+	mostrarStocks(argv[ARG_STOCKS]);
+
+	return 0;
+}
+
+
+int actualizarDepositos_ALU(const char* nombreStocks, const char* nombreMovimientos)
+{
+	/// Resolver. Todas las funciones que desarrolle deber�n tener el sufijo _ALU.
+	int cantDep=0;
+	int** matMovDeps = NULL;
+
+	cantDep = obtenerCantDepositos_ALU(nombreStocks);
+	matMovDeps = (int**)crearMatriz(cantDep, cantDep, sizeof(int));
+	Vector codigosDepositos;
+	crearVector(&codigosDepositos, 5, sizeof(char[11]));
+	inicializarMatrizEnCero_ALU(matMovDeps, cantDep, cantDep);
+	mostrarMatriz(cantDep, cantDep, matMovDeps);
+	crearVectorCodigosDepositos_ALU(nombreStocks, cantDep, &codigosDepositos);
+	printf("\n");
+	cargarMatrizMovimientosDepositos_ALU(nombreMovimientos, matMovDeps, cantDep, &codigosDepositos);
+	mostrarMatriz(cantDep, cantDep, matMovDeps);
+	procesarMatrizMovimientosDepositosActualizandoStocks_ALU(matMovDeps, cantDep, &codigosDepositos, nombreStocks);
+    free(matMovDeps);
+	destruirVector(&codigosDepositos);
+	return TODO_OK;
+}
+
+int obtenerCantDepositos_ALU(const char* nombreStocks){
+
+	FILE* pf= fopen(nombreStocks, "rb");
+	if(!pf){
+		printf("Error al abrir el archivo %s\n", nombreStocks);
+		return -1;
+	}
+	fseek(pf, 0, SEEK_END);
+	int cantDep = ftell(pf)/sizeof(Stock);
+	fclose(pf);
+	printf("Cantidad de depositos: %d\n", cantDep);
+	return cantDep;
+}
+
+int TxtaBin_ALU(const char* nombreMovimientos, const char* nombreMovimientosBin){
+	FILE* pfTxt= fopen(nombreMovimientos, "rt");
+	if(!pfTxt){
+		printf("Error al abrir el archivo de texto %s\n", nombreMovimientos);
+		return -1;
+	}
+	FILE* pfBin= fopen(nombreMovimientosBin, "wb");
+	if(!pfBin){
+		printf("Error al abrir el archivo binario %s\n", nombreMovimientosBin);
+		fclose(pfTxt);
+		return -2;
+	}
+	Movimiento aux;
+	while (fscanf(pfTxt, "%10s %10s %6d", aux.depOrigen, aux.depDestino, &aux.cantidad) == 3)
+		fwrite(&aux, sizeof(Movimiento), 1, pfBin);
+	fclose(pfTxt);
+	fclose(pfBin);
+	return TODO_OK;
+}
+
+
+
+int cargarMatrizMovimientosDepositos_ALU(const char* nombreMovimientos, int** matMovDeps, int cantDepositos, Vector* codigosDepositos) {
+	FILE* pfTxt = fopen(nombreMovimientos, "rt");
+	if (!pfTxt) {
+		printf("Error al abrir el archivo de texto %s\n", nombreMovimientos);
+		return -1;
+	}
+
+	Movimiento aux;
+	while (fscanf(pfTxt, "%10s %10s %6d", aux.depOrigen, aux.depDestino, &aux.cantidad) == 3) {
+		int posOrigen = codigoASubindice_ALU(codigosDepositos, aux.depOrigen);
+		int posDestino = codigoASubindice_ALU(codigosDepositos, aux.depDestino);
+		if (posOrigen != -1 && posDestino != -1) {
+			matMovDeps[posOrigen][posDestino] += aux.cantidad;
+		}
+	}
+	fclose(pfTxt);
+
+	return TODO_OK;
+}
+
+void inicializarMatrizEnCero_ALU(int** matMovDeps, int filas, int columnas) {
+    for (int i = 0; i < filas; i++) {
+        for (int j = 0; j < columnas; j++) {
+            matMovDeps[i][j] = 0;
+        }
+    }
+	printf("Matriz de movimientos inicializada en cero\n");
+}
+
+int crearVectorCodigosDepositos_ALU(const char* nombreStocks, int cantDepositos, Vector* codigosDepositos){
+	FILE *pf= fopen(nombreStocks, "rb");
+	if(!pf){
+		printf("Error al abrir el archivo %s\n", nombreStocks);
+		return -1;
+	}
+	Stock aux;
+	for (int i = 0; i < cantDepositos; i++){
+		fread(&aux, sizeof(Stock), 1, pf);
+		printf("Codigo deposito: %s\n", aux.codDeposito);
+		char* codigo = malloc(sizeof(char) * 11);
+		strcpy(codigo, aux.codDeposito);
+		insertarEnVectorOrd(codigosDepositos, &codigo, cmpStrings_ALU, actualizarString_ALU);
+		recorrerVector(codigosDepositos, imprimirCodigo, NULL);
+		free(codigo);
+	}
+	fclose(pf);
+
+	return TODO_OK;
+}
+
+int procesarMatrizMovimientosDepositosActualizandoStocks_ALU(int** matMovDeps, int cantDepositos, const Vector* codigosDepositos, const char* nombreStocks){
+	FILE *pf= fopen(nombreStocks, "rb");
+	if(!pf){
+		printf("Error al abrir el archivo %s\n", nombreStocks);
+		return -1;
+	}
+	Stock* vecStocks = malloc(sizeof(Stock) * cantDepositos);
+	int i = 0;
+
+	while(i < cantDepositos && fread(&vecStocks[i], sizeof(Stock), 1, pf) == 1) {
+		i++;
+		printf("Stock leido: %s %d\n", vecStocks[i-1].codDeposito, vecStocks[i-1].stock);
+		int posOrigen = codigoASubindice_ALU(codigosDepositos, vecStocks[i-1].codDeposito);
+		int totalSalida = 0;
+		for(int j = 0; j < cantDepositos; j++){
+			totalSalida += matMovDeps[posOrigen][j];
+		}
+		vecStocks[i-1].stock -= totalSalida;
+		int totalEntrada = 0;
+		for(int j = 0; j < cantDepositos; j++){
+			totalEntrada += matMovDeps[j][posOrigen];
+		}
+		vecStocks[i-1].stock += totalEntrada;
+	}
+	for(int i=0; i < cantDepositos; i++){
+		printf("Stock actualizado: %s %d\n", vecStocks[i].codDeposito, vecStocks[i].stock);
+	}
+	// [00][45][00][00]
+	// [40][00][40][30]
+	// [00][05][00][15]
+	// [25][50][00][00]			[200][400][100][500]
+	FILE* pfActu = fopen(nombreStocks, "wb");
+	if(!pfActu){
+		printf("Error al abrir el archivo %s\n", nombreStocks);
+		return -1;
+	}
+	fwrite(vecStocks, sizeof(Stock), cantDepositos, pfActu);
+	free(vecStocks);
+	fclose(pfActu);
+	fclose(pf);
+	return TODO_OK;
+}
+
+int codigoASubindice_ALU(const Vector* codigosDepositos, char* codigo){
+	int pos;
+	if(buscarEnVectorOrd_ALU(codigosDepositos, &codigo, cmpStrings_ALU, &pos)){
+		return pos;
+	}
+	return -1;
+}
+
+int cmpInt_ALU(const void* a, const void* b){
+	return *(int*)a - *(int*)b;
+}
+
+int cmpStrings_ALU(const void* a, const void* b) {
+    return strcmp(*(char**)a, *(char**)b);
+}
+
+void actualizarString_ALU(void* destino, const void* origen) {
+    strcpy(*(char**)destino, *(char**)origen);
+}
+
+void imprimirCodigo(void* elem, void* datosAccion) {
+    char* codigo = *(char**)elem;
+    printf("%s\n", codigo);
+}
