@@ -30,7 +30,9 @@
 
 
 typedef void (*print_callback)(const void*);
-int txtABin_ALU(const char* nombreArchTxt);
+typedef int (*FuncionConvertir)(const char*, void*);
+
+int txtABin_ALU(const char* nombreArchTxt, size_t tamElem, FuncionConvertir convertir);
 void cambiarExtension_ALU(const char* nombreArchivoOrig, char* nombreArchivoConExtension, const char* extension);
 int mostrarArchivo_ALU(const char* nombreArchivo, unsigned tam, print_callback print);
 int vectorCrear_ALU(Vector* vec, size_t tamElem);
@@ -45,6 +47,7 @@ void printIngrediente(const void* in);
 void printIndiceReceta(const void* ir);
 int cmpRecetas(const void* elem1, const void* elem2);
 int cmpIngredientes(const void* elem1, const void* elem2);
+int convertirTxtPedido(const char* linea, void* elem);
 
 
 void generarArchivoIngredientes() {
@@ -153,7 +156,7 @@ int satisfacerPedidos_ALU(const char* nombreArchPedidos, const char* nombreArchR
     char nombreRidx[100]="", nombreSidx[100]="", pedidoActual[11];
     cambiarExtension_ALU(nombreArchRecetas, nombreRidx,".idx");
     cambiarExtension_ALU(nombreArchIngredientes, nombreSidx, ".idx");
-    txtABin_ALU(nombreArchPedidos);
+    txtABin_ALU(nombreArchPedidos, sizeof(Pedido), convertirTxtPedido);
     mostrarArchivo_ALU("Pedidos.dat", sizeof(Pedido), printPedido);
     mostrarArchivo_ALU(nombreRidx, sizeof(IndReceta), printIndiceReceta);
     mostrarArchivo_ALU(nombreSidx, sizeof(IndIngrediente), printIndiceReceta);
@@ -212,7 +215,7 @@ int satisfacerPedidos_ALU(const char* nombreArchPedidos, const char* nombreArchR
             fread(&auxIngrediente, sizeof(Ingrediente), 1, archIngredientes);
             auxIngrediente.stock -= ptrReceta->cantidad;
             if(auxIngrediente.stock <= 0){
-                printf("Error, sin stock de %s", auxIngrediente.codIngr);
+                printf("Error, sin stock de %s\n", auxIngrediente.codIngr);
                 fclose(archRecetas);
                 fclose(archPedidos);
                 fclose(archIngredientes);
@@ -299,7 +302,7 @@ void vectorDestruir_ALU(Vector* vec){
 }
 
 int vectorVaciar_ALU(Vector* vec){
-    if (!vec)
+    if (!vec->vec)
         return 1;
     vec->ce = 0;
     return TODO_OK;
@@ -369,29 +372,33 @@ void cambiarExtension_ALU(const char* nombreArchivoOrig, char* nombreArchivoConE
     strcat(nombreArchivoConExtension, extension);
 }
 
-int txtABin_ALU(const char* nombreArchTxt){
+
+int txtABin_ALU(const char* nombreArchTxt, size_t tamElem, FuncionConvertir convertir){
     FILE* archTxt = fopen(nombreArchTxt, "r");
     if(!archTxt){
         printf("Error al abrir el archivo %s", nombreArchTxt);
-        return ERR_ARCHIVO;
+        return -11;
     }
-    char nombreBin[100];
-    cambiarExtension_ALU(nombreArchTxt, nombreBin, ".dat");
-    FILE* archBin = fopen(nombreBin, "wb");
+    char nombreArchBin[100];
+    nombreArchBin[0] = '\0';
+    cambiarExtension_ALU(nombreArchTxt, nombreArchBin, ".dat");
+    FILE* archBin = fopen(nombreArchBin, "wb");
     if(!archBin){
+        printf("Error al abrir el archivo %s", nombreArchBin);
         fclose(archTxt);
-        printf("Error al abrir el archivo %s", nombreBin);
-        return ERR_ARCHIVO;
+        return -12;
     }
-    Pedido auxPedido;
-    char linea[200];
-    // fgets(linea, 200, archTxt);
-    while(fgets(linea, sizeof(Pedido), archTxt)){
-        if(sscanf(linea,"%d %s %d",&auxPedido.nroPedido, auxPedido.codReceta,&auxPedido.cantidad)==3)
-            fwrite(&auxPedido, sizeof(Pedido), 1, archBin);
+    void* elem = malloc(tamElem);
+    char linea[400];
+    //fgets(linea, 400, archTxt); si hay que saltear encabezado
+    while(fgets(linea, 400, archTxt)){
+        if(convertir(linea, elem) == TODO_OK){
+            fwrite(elem, tamElem, 1, archBin);
+        }
     }
-    fclose(archTxt);
+    free(elem);
     fclose(archBin);
+    fclose(archTxt);
     return TODO_OK;
 }
 
@@ -407,5 +414,8 @@ int cmpIngredientes(const void* elem1, const void* elem2){
     return strcmp(ing1->codIngr, ing2->codIngr);
 }
 
-
+int convertirTxtPedido(const char* linea, void* elem){
+    Pedido* p = (Pedido*)elem;
+    return sscanf(linea, "%d %s %d", &p->nroPedido, p->codReceta, &p->cantidad) ==3 ? TODO_OK : ERR_ARCHIVO;
+}
 
