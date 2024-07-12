@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     IndComponente* ptrInd = (char*)idxComp.vec;
     IndComponente auxInd = *ptrInd;
     printIdxComponente(&auxInd);
-
+probar sin 88
 */
 
 
