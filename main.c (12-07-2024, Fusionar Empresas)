@@ -461,12 +461,9 @@ int vectorInsertarEnPos(Vector * vec, void * dato, int pos){
 
 bool vectorOrdInsertar_ALU(Vector * vec, void * elem, Cmp cmp, Actualizar actu){
     int pos = 0;
-    if(vec->ce  == 0){
+    if(vec->ce==0)
         vectorInsertarEnPos(vec, elem, pos);
-        return TODO_OK;
-    }
-
-	if(vectorBsearch(vec, elem, cmp, &pos)){
+	else if(vectorBsearch(vec, elem, cmp, &pos)){
 		actu(vec->vec + pos * vec->tamElem, elem);
 	}else{
 		memmove(vec->vec + (pos + 1) * vec->tamElem, vec->vec + pos * vec->tamElem, (vec->ce - pos) * vec->tamElem);
