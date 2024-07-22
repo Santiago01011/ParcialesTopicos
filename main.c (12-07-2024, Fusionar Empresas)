@@ -1,5 +1,5 @@
 /*****************************************************************************************************************
-** Apellido/s, Nombre/s: Zapata, Santiago                                     													**
+** Apellido/s, Nombre/s:                                    													**
 ** DNI:                                                   													**
 ******************************************************************************************************************
 ** Correcci�n																								   	**
@@ -64,6 +64,7 @@ int vectorCrear_ALU(Vector* vec, size_t tamElem);
 void vectorDestruir_ALU(Vector* vec);
 void vectorGrabar_ALU(Vector* v, const char* nombreArch);
 bool vectorOrdInsertar_ALU(Vector * vector, void * dato, Cmp cmp, Actualizar actu);
+bool vectorBsearch(Vector* vec, void* dato, Cmp cmp, int* pos);
 void actualizarProductos_ALU(void* pvActualizado, const void* pvActualizador);
 
 //generar archivos, hay 2 empresas, una de COR y otra de CHU, ambas tienen distintos archivos de productos y clientes
@@ -75,13 +76,13 @@ int generarArchivos_ALU(){
     }
     Producto prod[10] = {
         {"NOTEBOOK_DELL_R7_256GB", "Notebook Dell Ryzen 7 256gb", 150000, 10},
-        {"NOTEBOOK_DELL_R5_128GB", "Notebook Dell Ryzen 5 128gb", 100000, 5},
+        {"NOTEBOOK_ASUS_I5_128GB", "Notebook ASUS I5 128gb", 90000, 6},
         {"NOTEBOOK_DELL_R3_64GB", "Notebook Dell Ryzen 3 64gb", 50000, 3},
         {"NOTEBOOK_HP_I7_256GB", "Notebook HP I7 256gb", 120000, 7},
         {"NOTEBOOK_HP_I5_128GB", "Notebook HP I5 128gb", 80000, 4},
         {"NOTEBOOK_HP_I3_64GB", "Notebook HP I3 64gb", 40000, 2},
         {"NOTEBOOK_ASUS_I7_256GB", "Notebook ASUS I7 256gb", 140000, 8},
-        {"NOTEBOOK_ASUS_I5_128GB", "Notebook ASUS I5 128gb", 90000, 6},
+        {"NOTEBOOK_DELL_R5_128GB", "Notebook Dell Ryzen 5 128gb", 100000, 5},
         {"NOTEBOOK_ASUS_I3_64GB", "Notebook ASUS I3 64gb", 45000, 3},
         {"NOTEBOOK_LENOVO_I7_256GB", "Notebook LENOVO I7 256gb", 130000, 9}
     };
@@ -139,8 +140,7 @@ int generarArchivos_ALU(){
     return TODO_OK;
 }
 
-int main()
-{
+int main(){
     int resp = generarArchivos_ALU();
 
     if(resp != TODO_OK)
@@ -438,7 +438,6 @@ void vectorGrabar_ALU(Vector* v, const char* nombreArch){
     fclose(arch);
 }
 
-
 void actualizarProductos_ALU(void* pvActualizado, const void* pvActualizador){
     Producto* aux1 = (Producto*)pvActualizado;
     Producto* aux2 = (Producto*)pvActualizador;
@@ -448,28 +447,49 @@ void actualizarProductos_ALU(void* pvActualizado, const void* pvActualizador){
     }
 }
 
-bool vectorOrdInsertar_ALU(Vector * vector, void * dato, Cmp comparar, Actualizar actu)
-{
-    if(vector->cap == vector->ce)
-        return false;
+int vectorInsertarEnPos(Vector * vec, void * dato, int pos){
+    if(vec->cap == vec->ce){
+        vec->cap*=2;
+        realloc(vec->vec, vec->cap*vec->tamElem);
+        if(!vec->vec)
+            return -23;
+    }
+    memcpy(vec->vec + (pos*vec->tamElem), dato, vec->tamElem);
+    vec->ce++;
+    return TODO_OK;
+}
 
-    if (vector->ce == 0)
-    {
-        memcpy(vector->vec, dato, vector->tamElem);
-        vector->ce++;
-        return true;
+bool vectorOrdInsertar_ALU(Vector * vec, void * elem, Cmp cmp, Actualizar actu){
+    int pos = 0;
+    if(vec->ce  == 0){
+        vectorInsertarEnPos(vec, elem, pos);
+        return TODO_OK;
     }
 
-    void * inicio = vector->vec;
-    void* fin = vector->vec + (vector->ce -1) * vector->tamElem;
-
-
-    while(inicio <= fin &&(comparar(inicio, dato)<0))
-    {
-        inicio += vector->tamElem;
-    }
-    memmove(inicio + vector->tamElem, inicio, vector->tamElem + (fin-inicio));
-    memcpy(inicio, dato, vector->tamElem);
-    vector->ce++;
+	if(vectorBsearch(vec, elem, cmp, &pos)){
+		actu(vec->vec + pos * vec->tamElem, elem);
+	}else{
+		memmove(vec->vec + (pos + 1) * vec->tamElem, vec->vec + pos * vec->tamElem, (vec->ce - pos) * vec->tamElem);
+		vectorInsertarEnPos(vec, elem, pos);
+	}
     return true;
+}
+
+bool vectorBsearch(Vector* vec, void* dato, Cmp cmp, int* pos){
+    int ini = 0, fin = vec->ce - 1, med, resultado;
+    while(ini<=fin){
+        med = ini + (fin - ini) / 2;
+        void* elemMed = vec->vec + (med*vec->tamElem);
+        resultado = cmp(elemMed, dato);
+        if(resultado==0){
+            *pos = med;
+            return true;
+        }
+        if(resultado > 0)
+            fin = med - 1;
+        if(resultado < 0)
+            ini = med + 1;
+    }
+    *pos=ini;
+    return false;
 }
