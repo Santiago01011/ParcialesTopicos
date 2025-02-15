@@ -1,0 +1,41 @@
+# depslib dependency file v1.0
+1739412116 source:c:\users\zapatasantiago\documents\cprojects\modelofinal10--12-24\main.c
+	"main.h"
+
+1739412094 c:\users\zapatasantiago\documents\cprojects\modelofinal10--12-24\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1739417251 source:c:\users\zapatasantiago\documents\cprojects\modelofinal10--12-24\sources.c
+	"main.h"
+
+1738775177 source:c:\dev\cprojects\modelofinal10--12-24\listasimpleenlazada\listaenlazada.c
+	"listaEnlazada.h"
+
+1738774466 c:\dev\cprojects\modelofinal10--12-24\listasimpleenlazada\listaenlazada.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1739646805 source:c:\dev\cprojects\modelofinal10--12-24\main.c
+	"main.h"
+	"menu/menu.h"
+
+1739643795 c:\dev\cprojects\modelofinal10--12-24\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1739646666 source:c:\dev\cprojects\modelofinal10--12-24\sources.c
+	"main.h"
+
+1739646004 c:\dev\cprojects\modelofinal10--12-24\menu\menu.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<ctype.h>
+
+1739646837 source:c:\dev\cprojects\modelofinal10--12-24\menu\menu.c
+	"menu.h"
+
