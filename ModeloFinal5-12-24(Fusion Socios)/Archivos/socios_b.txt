@@ -1,0 +1,12 @@
+16001129|Scaloni, Lionel|01/05/2019
+16200214|Montiel, Gonzalo|04/08/2020
+16230902|Martinez, Emiliano|06/05/2022
+16231024|Martinez, Lisandro|03/06/2023
+16540430|Fernandez, Enzo|10/09/2019
+16621004|Otamendi, Nicolas|07/05/2020
+16660110|Martinez, Lautaro|07/11/2019
+16684444|Uran, Jonatan|09/05/2024
+16790200|Ghigo, Paola|04/06/2020
+16860403|Messi, Lionel|04/11/2024
+16900207|Paredes, Leandro|06/09/2023
+16940212|Molina, Nahuel|04/07/2017

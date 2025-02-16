@@ -1,0 +1,32 @@
+# depslib dependency file v1.0
+1739649701 source:c:\dev\cprojects\fusion socios\src\main.c
+	"main.h"
+
+1739649393 c:\dev\cprojects\fusion socios\src\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<ctype.h>
+
+1739649403 source:c:\dev\cprojects\fusion socios\src\menu.c
+	"main.h"
+
+1739743317 source:c:\dev\cprojects\modelofinal5-12-24(fusion socios)\src\main.c
+	"main.h"
+
+1739730703 c:\dev\cprojects\modelofinal5-12-24(fusion socios)\src\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<ctype.h>
+	"socios.h"
+
+1739745467 source:c:\dev\cprojects\modelofinal5-12-24(fusion socios)\src\menu.c
+	"main.h"
+
+1739745442 source:c:\dev\cprojects\modelofinal5-12-24(fusion socios)\src\socios.c
+	"socios.h"
+
+1739742738 c:\dev\cprojects\modelofinal5-12-24(fusion socios)\src\socios.h
+	"main.h"
+
