@@ -1,0 +1,3 @@
+2025-02-18 14:23:45|INFO|System startup complete.
+2025-02-18 14:25:10|WARNING|Low disk space.
+2025-02-18 14:26:00|ERROR|Unable to open configuration file.

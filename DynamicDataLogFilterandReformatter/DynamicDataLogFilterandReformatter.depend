@@ -1,0 +1,24 @@
+# depslib dependency file v1.0
+1740017386 source:c:\dev\cprojects\dynamicdatalogfilterandreformatter\main.c
+	"main.h"
+
+1740010368 c:\dev\cprojects\dynamicdatalogfilterandreformatter\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"Vector/libvec.h"
+	"DataLog/dataLog.h"
+
+1740017293 c:\dev\cprojects\dynamicdatalogfilterandreformatter\datalog\datalog.h
+	"../main.h"
+
+1740017272 source:c:\dev\cprojects\dynamicdatalogfilterandreformatter\datalog\datalog.c
+	"dataLog.h"
+	<time.h>
+
+1740010591 c:\dev\cprojects\dynamicdatalogfilterandreformatter\vector\libvec.h
+	"../main.h"
+
+1740017829 source:c:\dev\cprojects\dynamicdatalogfilterandreformatter\vector\libvec.c
+	"libvec.h"
+
