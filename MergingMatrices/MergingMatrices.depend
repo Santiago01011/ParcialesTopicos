@@ -1,0 +1,17 @@
+# depslib dependency file v1.0
+1740031537 source:c:\dev\cprojects\mergingmatrices\libmat\libmat.c
+	"libmat.h"
+
+1740027734 c:\dev\cprojects\mergingmatrices\libmat\libmat.h
+	"../main.h"
+	<ctype.h>
+
+1740024445 c:\dev\cprojects\mergingmatrices\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"libmat/libmat.h"
+
+1740028914 source:c:\dev\cprojects\mergingmatrices\main.c
+	"main.h"
+
