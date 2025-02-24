@@ -1,0 +1,16 @@
+# depslib dependency file v1.0
+1740417849 source:c:\dev\cprojects\prefinal\main.c
+	"main.h"
+
+1740417809 c:\dev\cprojects\prefinal\main.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<ctype.h>
+
+1740413668 source:c:\dev\cprojects\prefinal\menu.c
+	"main.h"
+
+1740417800 source:c:\dev\cprojects\prefinal\matlib.c
+	"main.h"
+
